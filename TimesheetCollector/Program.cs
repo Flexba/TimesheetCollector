@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.EntityFrameworkCore;
+using Minio;
 using TimesheetCollector.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddSingleton<MinioClient>(new MinioClient("localhost:9000", "minioadmin", "minioadmin"));
+
+builder.Services.AddDbContextFactory<DatabaseContext>();
 
 var app = builder.Build();
 
@@ -27,5 +32,8 @@ app.UseRouting();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+
+var db = app.Services.GetService<IDbContextFactory<DatabaseContext>>();
+db.CreateDbContext().Database.Migrate();
 
 app.Run();

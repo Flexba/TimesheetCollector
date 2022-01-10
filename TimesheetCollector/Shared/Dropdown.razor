@@ -1,0 +1,28 @@
+﻿<InputSelect class="form-control"
+             Value="SelectedOption"
+             ValueExpression="@(() => SelectedOption)"
+             ValueChanged=SelectedOptionChanged>
+
+    <option />
+    @foreach (var item in Options)
+    {
+        <option value="@item">@item</option>
+    }
+</InputSelect>
+
+@code {
+    // Demonstrates how a parent component can supply parameters
+    [Parameter]
+    public IList<string> Options { get; set; } = new List<string>();
+
+    [Parameter]
+    public EventCallback<string> SelectedOptionChanged { get; set; } = default!;
+
+    [Parameter]
+    public string? SelectedOption { get; set; }
+
+    async Task UpdateSelectedOption(ChangeEventArgs changeEventArgs)
+    {
+        await SelectedOptionChanged.InvokeAsync(SelectedOption);
+    }
+}

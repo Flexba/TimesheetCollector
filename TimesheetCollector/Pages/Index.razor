@@ -1,9 +1,80 @@
 ﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using Minio
+@using TimesheetCollector.Data
+@using Microsoft.Extensions.Logging
+@inject ILogger<Index> Logger
+@inject IDbContextFactory<DatabaseContext> DbFactory
+@inject MinioClient MinioClient
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Timesheet - Upload</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Timesheet Upload</h1>
 
-Welcome to your new app.
+<CompletionReminder />
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+
+
+<EditForm Model=@fileUpload OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Projects</label>
+        <Dropdown Options=@projects @bind-SelectedOption=fileUpload.Project />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Timesheet</label>
+        <InputFile class="form-control" OnChange="@LoadFiles" />
+    </div>
+
+
+    <button type="submit" class="btn btn-primary">Upload Timesheet</button>
+</EditForm>
+
+@code {
+    private FileUpload fileUpload = new();
+
+    IList<string> projects = new List<string>()
+    {
+      "Project A",
+      "Project B"
+    };
+
+    string project = "Project A";
+
+    private async Task HandleValidSubmit()
+    {
+        var fileUploadEntity = FromFileUpload(fileUpload);
+        await AddFileUpload(fileUploadEntity);
+        Logger.LogInformation("Successfully added file upload to DB");
+
+        await MinioClient.PutObjectAsync(fileUploadEntity.Bucket, fileUploadEntity.Object, fileUpload.File.OpenReadStream(), fileUpload.File.Size);
+        Logger.LogInformation("Successfully added object to MinIO");
+    }
+
+    private void LoadFiles(InputFileChangeEventArgs e)
+    {
+        fileUpload.File = e.File;
+    }
+
+    private async Task AddFileUpload(FileUploadEntity fileUploadEntity)
+    {
+        using var context = DbFactory.CreateDbContext();
+        Logger.LogInformation("Successfully created DB Context");
+
+        await context.AddAsync(fileUploadEntity);
+        await context.SaveChangesAsync();
+    }
+
+    private FileUploadEntity FromFileUpload(FileUpload fileUpload)
+    {
+        return new FileUploadEntity()
+            {
+                Project = fileUpload.Project,
+                Bucket = "test",
+                Object = "test"
+            };
+    }
+}
